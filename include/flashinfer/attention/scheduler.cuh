@@ -230,6 +230,7 @@ cudaError_t BatchDecodeWithPagedKVCacheWorkEstimationDispatchedMLA(
                                                                        num_threads, smem_size));
     max_grid_size = num_blocks_per_sm * num_sm;
     if (batch_size * gdy >= max_grid_size) {
+    // if (false) {
       split_kv = false;
       max_num_pages_per_batch = 1;
       for (uint32_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
@@ -247,6 +248,7 @@ cudaError_t BatchDecodeWithPagedKVCacheWorkEstimationDispatchedMLA(
           PartitionPagedKVCacheBinarySearchMinNumPagePerBatch(max_grid_size, gdy, num_pages,
                                                               std::max(128 / page_size, 1U));
       if (new_batch_size == batch_size && !enable_cuda_graph) {
+      // if (false) {
         // do not use partition-kv kernel for short sequence, when not using CUDAGraph
         split_kv = false;
       } else {
@@ -254,6 +256,8 @@ cudaError_t BatchDecodeWithPagedKVCacheWorkEstimationDispatchedMLA(
         split_kv = true;
       }
     }
+
+    printf("split_kv: %d\n", split_kv);
 
     return cudaSuccess;
   });

@@ -142,10 +142,11 @@ __device__ __forceinline__ vec_t<float, vec_size> vec_apply_llama_rope_interleav
     vec_before = vec;
 #pragma unroll
     for (uint32_t i = 0; i < vec_size; ++i) {
-      float embed = float(offset) * freq[i];
-      float cos, sin;
-      __sincosf(embed, &sin, &cos);
-      vec[i] = vec[i] * cos + ((i % 2 == 0) ? -vec_before[i ^ 1] : vec_before[i ^ 1]) * sin;
+      // float embed = float(offset) * freq[i];
+      // float cos, sin;
+      // __sincosf(embed, &sin, &cos);
+      // vec[i] = vec[i] * cos + ((i % 2 == 0) ? -vec_before[i ^ 1] : vec_before[i ^ 1]) * sin;
+      vec[i] = vec[i] * 1.0f; // * cos + ((i % 2 == 0) ? -vec_before[i ^ 1] : vec_before[i ^ 1]) * sin;
     }
   }
   return vec;

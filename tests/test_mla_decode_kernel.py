@@ -275,17 +275,25 @@ class DeepseekV2AttentionMatAbsorbDecode(nn.Module):
             compressed_kv_normed_cache = compressed_kv_normed_cache.to(q_kv_dtype)
             k_pe_cache = k_pe_cache.to(q_kv_dtype)
 
-        if not use_flashinfer_kernel:
+        if True: # True: #not use_flashinfer_kernel:
             freqs_cis = precompute_freqs_cis(
                 self.qk_rope_head_dim, kv_len, self.rope_theta, use_scaled=False
             ).to(k_pe_cache.device)
+            dims_before = (q_pe.shape, k_pe_cache.shape)
+            dtype_before = (q_pe.dtype, k_pe_cache.dtype)
             q_pe, k_pe_cache = apply_rotary_emb(
                 q_pe.unsqueeze(1).repeat(1, kv_len, 1, 1),
                 k_pe_cache.unsqueeze(2),
                 freqs_cis,
             )
-            q_pe = q_pe[:, -1:, :, :].squeeze(1)
-            k_pe_cache = k_pe_cache.squeeze(2)
+            q_pe = q_pe[:, -1:, :, :].squeeze(1).contiguous()
+            k_pe_cache = k_pe_cache.squeeze(2).contiguous()
+            dims_after = (q_pe.shape, k_pe_cache.shape)
+            assert dims_before == dims_after
+            assert dtype_before == (q_pe.dtype, k_pe_cache.dtype)
+
+        if not use_flashinfer_kernel:
+
 
             # attn_weights_pe ~ [bsz, 128, kv_len]
             attn_weights_pe = torch.matmul(
