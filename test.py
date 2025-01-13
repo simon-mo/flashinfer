@@ -13,8 +13,32 @@ workspace = torch.empty(FLASHINFER_WORKSPACE_BUFFER_SIZE,
 
 
 # [total_blocks, 2, block_size, num_heads, head_dim] we store the rope cache in the "value" section
-kv_cache = torch.randn([2, 2, 16, 1, 512], dtype=torch.bfloat16, device="cuda")
-query = torch.randn([2, 16, 576], dtype=torch.bfloat16, device="cuda")
+kv_cache = torch.zeros([2, 2, 16, 1, 512], dtype=torch.bfloat16, device="cuda")
+query = torch.zeros([2, 16, 576], dtype=torch.bfloat16, device="cuda")
+
+# here we load the real activations from a sample query using DeepseekV2-Lite-Chat
+import safetensors.torch
+import sys
+if len(sys.argv) > 1:
+    path = sys.argv[1]
+    print(f"Using weights from {path}")
+    state_dict = safetensors.torch.load_file(path)
+    q_pe = state_dict["q_pe"]
+    q_nope = state_dict["q_nope"]
+    k_pe_cache = state_dict["k_pe_cache"]
+    compressed_kv_normed_cache = state_dict["compressed_kv_normed_cache"]
+    # print(f"{q_pe.shape=}, {q_noope.shape=}, {k_pe_cache.shape=}, {compressed_kv_normed_cache.shape=}")
+    # q_pe.shape=torch.Size([2, 16, 64]), q_nope.shape=torch.Size([2, 16, 512]), k_pe_cache.shape=torch.Size([2, 9, 64]), compressed_kv_normed_cache.shape=torch.Size([2, 9, 512])
+    query[:, :, :512] = q_nope
+    query[:, :, 512:] = q_pe
+    kv_cache[:, 0, :9, 0, :] = compressed_kv_normed_cache
+    kv_cache[:, 1, :9, 0, :64] = k_pe_cache
+    kv_cache[:, 1, :9, 0, 64:] = 0
+else:
+    print("Randomly initializing")
+    kv_cache = torch.randn([2, 2, 16, 1, 512], dtype=torch.bfloat16, device="cuda")
+    query = torch.randn([2, 16, 576], dtype=torch.bfloat16, device="cuda")
+
 
 wrapper = BatchDecodeMlaWithPagedKVCacheWrapper(workspace)
 
